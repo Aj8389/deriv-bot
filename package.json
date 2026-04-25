@@ -1,0 +1,14 @@
+{
+  "name": "derivbot-pro",
+  "version": "3.0.0",
+  "description": "Full-stack Deriv algo trading bot with real WebSocket API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "install-deps": "npm install ws express"
+  },
+  "dependencies": {
+    "express": "^4.22.1",
+    "ws": "^8.20.0"
+  }
+}
