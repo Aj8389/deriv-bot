@@ -518,7 +518,7 @@ const C = {
 // ─────────────────────────────────────────
 function connectBackend() {
   if (C.backendWs) { try { C.backendWs.close(); } catch(_){} }
-  const wsUrl = 'ws://localhost:3000';
+  const wsUrl = 'wss://deriv-bot-pexb.onrender.com';
   log('Connecting to backend: ' + wsUrl, 'info');
   C.backendWs = new WebSocket(wsUrl);
 
