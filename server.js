@@ -492,7 +492,9 @@ app.get("/api/status", function(req, res) { res.json({ authorized: state.authori
 app.get("/api/trades", function(req, res) { res.json({ trades: state.trades.slice(0, 100) }); });
 app.use(express.static(path.join(__dirname)));
 app.get("/", function(req, res) { res.sendFile(path.join(__dirname, "index.html")); });
-
+app.get("/", (req, res) => {
+  res.sendFile(require("path").join(__dirname, "index.html"));
+});
 // ─────────────────────────────────────────────
 // START SERVER
 // ─────────────────────────────────────────────
