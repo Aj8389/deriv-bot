@@ -481,7 +481,7 @@ canvas#mc{width:100% !important;height:250px !important;}
     <div class="ptitle">System Log</div>
     <div class="loglist" id="logList">
       <div class="logentry"><span class="logt">--:--:--</span><span class="logm sys">DerivBot Pro ready. Connect API token to start.</span></div>
-      <div class="logentry"><span class="logt">--:--:--</span><span class="logm info">Backend: ws://localhost:3000 — connecting...</span></div>
+      <div class="logentry"><span class="logt">--:--:--</span><span class="logm info">Backend: Connecting to server...</span></div>
     </div>
   </div>
 </div>
@@ -518,7 +518,7 @@ const C = {
 // ─────────────────────────────────────────
 function connectBackend() {
   if (C.backendWs) { try { C.backendWs.close(); } catch(_){} }
-  const wsUrl = 'ws://' + window.location.host;
+  const wsUrl = 'ws://localhost:3000';
   log('Connecting to backend: ' + wsUrl, 'info');
   C.backendWs = new WebSocket(wsUrl);
 
@@ -533,7 +533,13 @@ function connectBackend() {
   };
 
   C.backendWs.onmessage = (evt) => {
-    let msg; try { msg = JSON.parse(evt.data); } catch(_){ return; }
+    let msg;
+try {
+  msg = JSON.parse(evt.data);
+} catch (e) {
+  log('Invalid backend message', 'err');
+  return;
+}
     handleBackendMsg(msg);
   };
 
