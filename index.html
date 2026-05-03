@@ -218,6 +218,9 @@ canvas#mc{width:100% !important;height:250px !important;}
 .toast.err{background:rgba(255,69,96,0.1);border-color:rgba(255,69,96,0.3);color:var(--red);}
 .toast.warn{background:rgba(255,183,38,0.1);border-color:rgba(255,183,38,0.3);color:var(--amber);}
 
+/* Token saved indicator */
+.tok-saved{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--green);font-family:var(--mono);margin-top:5px;}
+.tok-saved.hidden{display:none;}
 .backendnotice{position:fixed;bottom:0;left:0;right:0;z-index:50;padding:7px 20px;text-align:center;background:rgba(79,142,247,0.07);border-top:1px solid rgba(79,142,247,0.2);color:var(--blue);font-size:11px;font-family:var(--mono);}
 </style>
 </head>
@@ -250,7 +253,9 @@ canvas#mc{width:100% !important;height:250px !important;}
       <div class="irow">
         <div class="field"><input type="password" id="apiTok" placeholder="Paste Deriv API token..." autocomplete="off"/></div>
         <button class="ibtn green" id="connBtn" onclick="doConnect()">Connect</button>
+        <button class="ibtn outline" onclick="clearToken()" title="Clear saved token" style="padding:8px 9px;flex-shrink:0;">✕</button>
       </div>
+      <div class="tok-saved hidden" id="tokSaved">✓ Token saved — auto-connecting...</div>
     </div>
     <div style="margin-top:8px;padding:9px 11px;background:rgba(79,142,247,0.05);border:1px solid rgba(79,142,247,0.15);border-radius:7px;font-size:10px;color:var(--muted);line-height:1.8;">
       <b style="color:var(--blue)">Get token:</b><br>
@@ -481,7 +486,7 @@ canvas#mc{width:100% !important;height:250px !important;}
     <div class="ptitle">System Log</div>
     <div class="loglist" id="logList">
       <div class="logentry"><span class="logt">--:--:--</span><span class="logm sys">DerivBot Pro ready. Connect API token to start.</span></div>
-      <div class="logentry"><span class="logt">--:--:--</span><span class="logm info">Backend: Connecting to server...</span></div>
+      <div class="logentry"><span class="logt">--:--:--</span><span class="logm info">Backend: ws://localhost:3000 — connecting...</span></div>
     </div>
   </div>
 </div>
@@ -514,11 +519,24 @@ const C = {
 };
 
 // ─────────────────────────────────────────
+// TOKEN PERSISTENCE (localStorage)
+// ─────────────────────────────────────────
+function saveToken(token) {
+  try { localStorage.setItem('derivbot_token', token); } catch(e) {}
+}
+function loadToken() {
+  try { return localStorage.getItem('derivbot_token') || ''; } catch(e) { return ''; }
+}
+function removeToken() {
+  try { localStorage.removeItem('derivbot_token'); } catch(e) {}
+}
+
+// ─────────────────────────────────────────
 // BACKEND WEBSOCKET (connects to server.js)
 // ─────────────────────────────────────────
 function connectBackend() {
   if (C.backendWs) { try { C.backendWs.close(); } catch(_){} }
-  const wsUrl = 'wss://deriv-bot-pexb.onrender.com';
+  const wsUrl = 'ws://' + window.location.host;
   log('Connecting to backend: ' + wsUrl, 'info');
   C.backendWs = new WebSocket(wsUrl);
 
@@ -530,16 +548,17 @@ function connectBackend() {
     document.getElementById('backendBar').style.borderTopColor = 'rgba(0,229,176,0.2)';
     log('Backend WebSocket connected', 'ok');
     if (C.reconnectTimer) { clearTimeout(C.reconnectTimer); C.reconnectTimer = null; }
+    // Auto-connect Deriv if token was previously saved
+    const savedToken = loadToken();
+    if (savedToken) {
+      setConnStatus('connecting', 'CONNECTING...');
+      sendBackend({ type: 'CONNECT', token: savedToken });
+      log('Auto-connecting with saved token...', 'info');
+    }
   };
 
   C.backendWs.onmessage = (evt) => {
-    let msg;
-try {
-  msg = JSON.parse(evt.data);
-} catch (e) {
-  log('Invalid backend message', 'err');
-  return;
-}
+    let msg; try { msg = JSON.parse(evt.data); } catch(_){ return; }
     handleBackendMsg(msg);
   };
 
@@ -589,6 +608,8 @@ function handleBackendMsg(msg) {
       document.getElementById('modeTag').className = 'mode-tag live';
       document.getElementById('startBtn').disabled = false;
       document.getElementById('chartSym').textContent = document.getElementById('symSel').value + ' · LIVE';
+      document.getElementById('tokSaved').classList.remove('hidden');
+      document.getElementById('tokSaved').textContent = '✓ Token saved & connected';
       toast('Connected! Account: ' + msg.loginid, 'ok');
       log('Authorized: ' + msg.loginid + ' | Balance: ' + msg.balance + ' ' + msg.currency, 'ok');
       break;
@@ -689,9 +710,23 @@ function applyFullState(s) {
 function doConnect() {
   const token = document.getElementById('apiTok').value.trim();
   if (!token) { toast('Paste your Deriv API token first', 'warn'); return; }
+  saveToken(token);  // persist to localStorage
   setConnStatus('connecting', 'CONNECTING...');
   sendBackend({ type: 'CONNECT', token });
   log('Sending auth request to backend...', 'info');
+}
+
+function clearToken() {
+  removeToken();
+  document.getElementById('apiTok').value = '';
+  document.getElementById('tokSaved').classList.add('hidden');
+  C.derivConnected = false;
+  setConnStatus('', 'DISCONNECTED');
+  document.getElementById('modeTag').textContent = 'PAPER';
+  document.getElementById('modeTag').className = 'mode-tag paper';
+  document.getElementById('startBtn').disabled = true;
+  toast('Token cleared', 'warn');
+  log('Saved token removed', 'warn');
 }
 
 function startBot() {
@@ -971,6 +1006,14 @@ function log(msg, level) {
 window.onload = () => {
   initCharts();
   updateSLTP();
+  // Restore saved token into the input field
+  const savedToken = loadToken();
+  if (savedToken) {
+    document.getElementById('apiTok').value = savedToken;
+    document.getElementById('tokSaved').classList.remove('hidden');
+    document.getElementById('tokSaved').textContent = '✓ Token saved — auto-connecting on backend ready...';
+    log('Saved token restored — waiting for backend...', 'info');
+  }
   connectBackend();
 };
 </script>
