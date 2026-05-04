@@ -486,7 +486,7 @@ canvas#mc{width:100% !important;height:250px !important;}
     <div class="ptitle">System Log</div>
     <div class="loglist" id="logList">
       <div class="logentry"><span class="logt">--:--:--</span><span class="logm sys">DerivBot Pro ready. Connect API token to start.</span></div>
-      <div class="logentry"><span class="logt">--:--:--</span><span class="logm info">Backend: ws://localhost:3000 — connecting...</span></div>
+      <div class="logentry"><span class="logt">--:--:--</span><span class="logm info">Backend: Render Server — connecting...</span></div>
     </div>
   </div>
 </div>
@@ -536,13 +536,13 @@ function removeToken() {
 // ─────────────────────────────────────────
 function connectBackend() {
   if (C.backendWs) { try { C.backendWs.close(); } catch(_){} }
-  const wsUrl = 'ws://' + window.location.host;
+  const wsUrl = 'wss://deriv-bot-pexb.onrender.com';
   log('Connecting to backend: ' + wsUrl, 'info');
   C.backendWs = new WebSocket(wsUrl);
 
   C.backendWs.onopen = () => {
     C.wsConnected = true;
-    document.getElementById('backendBar').textContent = '✓ Backend connected (ws://' + window.location.host + ')';
+    document.getElementById('backendBar').textContent = '✓ Backend connected (Render Server)';
     document.getElementById('backendBar').style.background = 'rgba(0,229,176,0.07)';
     document.getElementById('backendBar').style.color = 'var(--green)';
     document.getElementById('backendBar').style.borderTopColor = 'rgba(0,229,176,0.2)';
